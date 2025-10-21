@@ -1,0 +1,500 @@
+﻿@model Tuple<IEnumerable<ChatAppMongo.Models.UserModel>, IEnumerable<ChatAppMongo.Models.UserModel>>
+@{
+    ViewData["Title"] = "Friends";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+
+<nav class="navbar navbar-light bg-light px-3 d-flex align-items-center">
+    <a class="navbar-brand" href="#">ChatApp</a>
+
+    <div class="ms-auto d-flex align-items-center gap-2">
+        <button class="btn btn-outline-primary position-relative"
+                data-bs-toggle="modal"
+                data-bs-target="#friendRequestsModal">
+            <i class="bi bi-person-plus-fill fs-5"></i>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="friendRequestsCount">
+                @Model.Item1.Count()
+            </span>
+        </button>
+
+        <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#searchModal">
+            <i class="bi bi-search fs-5"></i>
+        </button>
+        <button class="btn btn-outline-secondary" id="currentUserProfileBtn" data-bs-toggle="modal" data-bs-target="#currentUserProfileModal">
+            <i class="bi bi-person-circle fs-5"></i>
+        </button>
+        <form method="post" action="/Account/Logout" class="d-inline">
+            <button type="submit" style="margin-top:15px;" class="btn btn-outline-danger d-flex align-items-center gap-1">
+                <i class="bi bi-box-arrow-right fs-5"></i>
+                <span class="d-none d-sm-inline">Logout</span>
+            </button>
+        </form>
+
+
+    </div>
+</nav>
+<style>
+    form button.btn-outline-danger:hover {
+        background-color: #dc3545;
+        color: white;
+        transition: 0.3s;
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- GROUPS SECTION START -->
+    <h5 class="mt-4">Your Groups</h5>
+    <div class="d-flex flex-wrap gap-2 mb-3" id="groupList">
+        <!-- Groups will be dynamically loaded via JS -->
+    </div>
+
+    <!-- Create Group Button -->
+    <button class="btn btn-outline-success mb-3" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+        <i class="bi bi-plus-circle"></i> Create Group
+    </button>
+    <!-- GROUPS SECTION END -->
+
+    <h5 class="mt-4">Your Friends</h5>
+    <div class="friends-line d-flex flex-wrap" id="friendsList">
+        @* Your existing friend loop *@
+        @foreach (var friend in Model.Item2)
+        {
+            <div class="friend-card m-2" data-id="@friend.Id">
+                <div class="card shadow-sm text-center" style="width:120px;">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                        @if (!string.IsNullOrEmpty(friend.PhotoUrl))
+                        {
+                            <img src="@friend.PhotoUrl" class="rounded-circle mb-2" style="width:50px; height:50px; object-fit:cover;" />
+                        }
+                        else
+                        {
+                            <div class="avatar friend-avatar rounded-circle bg-primary text-white mb-2"
+                                 data-id="@friend.Id"
+                                 style="width:50px; height:50px; font-size:20px; display:flex; align-items:center; justify-content:center;">
+                                @friend.Username.Substring(0, 1).ToUpper()
+                            </div>
+                        }
+
+                        <h6 class="card-title mb-1 text-truncate" style="max-width:100%;">@friend.Username</h6>
+                        <a href="/Chat/ChatRoom?friendId=@friend.Id" class="btn btn-sm btn-outline-primary mt-2 w-100">Chat</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+</div>
+
+<!-- Friend Requests Modal -->
+<div class="modal fade" id="friendRequestsModal" tabindex="-1" aria-labelledby="friendRequestsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="friendRequestsModalLabel">Friend Requests</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="friendRequestsList">
+                @if (!Model.Item1.Any())
+                {
+                    <p class="text-center text-muted">No pending requests</p>
+                }
+                else
+                {
+                    @foreach (var user in Model.Item1)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2" data-id="@user.Id">
+                            <div>
+                                <strong>@user.Username</strong><br />
+                                <small>wants to connect</small>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-success accept-btn" data-id="@user.Id">✔</button>
+                                <button class="btn btn-danger reject-btn" data-id="@user.Id">✖</button>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Users Modal -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="searchModalLabel">Search Users</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="modalSearchInput" placeholder="Search users by username..." />
+                    <button class="btn btn-primary" id="modalSearchBtn">Search</button>
+                </div>
+                <ul class="list-group" id="modalSearchResults"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .friends-line {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .friend-card .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        transition: 0.3s;
+    }
+
+    .avatar {
+        font-weight: bold;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener("click", async function(e) {
+        // Accept friend request
+        if(e.target.closest(".accept-btn")) {
+            let btn = e.target.closest(".accept-btn");
+            let id = btn.dataset.id;
+
+            let res = await fetch("/Friend/AcceptRequest", {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: `senderId=${id}`
+            });
+            let result = await res.json();
+
+            if(result.success) {
+                let requestDiv = btn.closest("div[data-id]");
+                requestDiv.remove();
+                updateFriendRequestCount();
+
+                if(result.friend) {
+                    const div = document.createElement("div");
+                    div.className = "friend-card m-2";
+                    div.innerHTML = `
+                        <div class="card shadow-sm text-center" style="width:120px;">
+                            <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                                <div class="avatar rounded-circle bg-primary text-white mb-2" style="width:50px; height:50px; font-size:20px; display:flex; align-items:center; justify-content:center;">
+                                    ${result.friend.username.charAt(0).toUpperCase()}
+                                </div>
+                                <h6 class="card-title mb-1 text-truncate" style="max-width:100%;">${result.friend.username}</h6>
+                                <a href="/Chat/ChatRoom?friendId=${result.friend.id}" class="btn btn-sm btn-outline-primary mt-2 w-100">Chat</a>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById("friendsList").appendChild(div);
+                }
+            } else alert(result.message);
+        }
+
+        // Reject friend request
+        if(e.target.closest(".reject-btn")) {
+            let btn = e.target.closest(".reject-btn");
+            let id = btn.dataset.id;
+
+            await fetch("/Friend/RejectRequest", {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: `senderId=${id}`
+            });
+            btn.closest("div[data-id]").remove();
+            updateFriendRequestCount();
+        }
+
+        // Send friend request from modal search
+        if(e.target.closest(".add-btn")) {
+            let btn = e.target.closest(".add-btn");
+            let receiverId = btn.dataset.id;
+
+            let res = await fetch("/Friend/SendRequest", {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: `receiverId=${receiverId}`
+            });
+            let result = await res.json();
+            alert(result.message);
+
+            if(result.success) {
+                btn.innerText = "Sent";
+                btn.disabled = true;
+            }
+        }
+    });
+
+    // Update badge count
+    function updateFriendRequestCount() {
+        const badge = document.getElementById("friendRequestsCount");
+        const requests = document.querySelectorAll("#friendRequestsList div[data-id]").length;
+        badge.innerText = requests;
+        badge.style.display = requests ? "inline-block" : "none";
+    }
+
+    // Search users in modal
+    document.getElementById("modalSearchBtn").addEventListener("click", async function() {
+        let query = document.getElementById("modalSearchInput").value.trim();
+        if(!query) return;
+
+        let res = await fetch(`/Friend/SearchUsers?query=${encodeURIComponent(query)}`);
+        let users = await res.json();
+
+        let resultsList = document.getElementById("modalSearchResults");
+        resultsList.innerHTML = "";
+
+        if(users.length === 0) {
+            resultsList.innerHTML = `<li class="list-group-item text-muted">No users found</li>`;
+            return;
+        }
+
+        users.forEach(u => {
+            let li = document.createElement("li");
+            li.className = "list-group-item d-flex justify-content-between align-items-center";
+
+            let btnText = u.isFriend ? "Friend" : u.requestSent ? "Sent" : "Add";
+            let disabled = u.isFriend || u.requestSent ? "disabled" : "";
+
+            li.innerHTML = `
+                ${u.username}
+                <button class="btn btn-sm btn-success add-btn" data-id="${u.id}" ${disabled}>${btnText}</button>
+            `;
+            resultsList.appendChild(li);
+        });
+    });
+       document.addEventListener("click", async function(e) {
+        const avatar = e.target.closest(".friend-avatar");
+        if (!avatar) return; // Only run if avatar clicked
+
+        const userId = avatar.dataset.id;
+        if (!userId) return;
+
+        try {
+            let res = await fetch(`/Friend/Profile?userId=${userId}`);
+            let data = await res.json();
+
+            if (data.success) {
+                document.getElementById("profileModalTitle").innerText = data.username;
+                document.getElementById("profileUsername").innerText = data.username;
+                document.getElementById("profilePhoto").src = data.photoUrl || "/images/default-avatar.png";
+
+                let profileModal = new bootstrap.Modal(document.getElementById("profileModal"));
+                profileModal.show();
+            } else {
+                alert(data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Failed to load profile.");
+        }
+    });
+        document.getElementById("currentUserProfileBtn").addEventListener("click", async () => {
+        try {
+            let res = await fetch('/Friend/CurrentUserProfile'); // new endpoint
+            let data = await res.json();
+
+            if (data.success) {
+                document.getElementById("currentUsername").value = data.username || "";
+                document.getElementById("currentUserEmail").value = data.email || "";
+                document.getElementById("currentUserPhoto").src = data.photoUrl || "/images/default-avatar.png";
+            } else {
+                alert(data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Failed to load profile.");
+        }
+    });
+        document.addEventListener("DOMContentLoaded", () => {
+        const photoInput = document.getElementById("currentUserPhotoInput");
+        const photoPreview = document.getElementById("currentUserPhoto");
+
+        if(photoInput && photoPreview) {
+            photoInput.addEventListener("change", function() {
+                const file = this.files[0];
+                if(file){
+                    const reader = new FileReader();
+                    reader.onload = function(e){
+                        photoPreview.src = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    });
+
+         document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("currentUserProfileForm");
+        if (form) {
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const formData = new FormData();
+                formData.append("Username", document.getElementById("currentUsername").value.trim());
+                formData.append("Email", document.getElementById("currentUserEmail").value.trim());
+
+                const photoFile = document.getElementById("currentUserPhotoInput").files[0];
+                if(photoFile) formData.append("PhotoFile", photoFile);
+
+                try {
+                    let res = await fetch('/Friend/UpdateCurrentUserPhoto', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    let result = await res.json();
+                    if(result.success){
+                        alert("Profile updated successfully!");
+                        bootstrap.Modal.getInstance(document.getElementById("currentUserProfileModal")).hide();
+                    } else {
+                        alert(result.message);
+                    }
+                } catch(err) {
+                    console.error(err);
+                    alert("Update failed.");
+                }
+            });
+        }
+    });
+
+        // Load user's groups
+    async function loadGroups() {
+        try {
+            let res = await fetch('/Group/MyGroups');
+            let groups = await res.json();
+            const groupList = document.getElementById("groupList");
+            groupList.innerHTML = "";
+
+            groups.forEach(g => {
+                const div = document.createElement("div");
+                div.className = "group-card";
+                div.innerHTML = `
+                    <div class="card shadow-sm text-center" style="width:120px;">
+                        <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                            <img src="${g.iconUrl || '/images/default-group.png'}" class="rounded-circle mb-2" style="width:50px; height:50px; object-fit:cover;" />
+                            <h6 class="card-title mb-1 text-truncate" style="max-width:100%;">${g.name}</h6>
+                            <button class="btn btn-sm btn-outline-primary mt-2 w-100 open-group-btn" data-id="${g.id}">Open</button>
+                        </div>
+                    </div>
+                `;
+                groupList.appendChild(div);
+            });
+        } catch(err) {
+            console.error("Failed to load groups", err);
+        }
+    }
+    loadGroups();
+
+       document.addEventListener("click", e => {
+        const btn = e.target.closest(".open-group-btn");
+        if(btn) {
+            console.log("Button clicked!", btn.dataset.id);
+            const groupId = btn.dataset.id;
+            window.location.href = `/Group/GroupChat?groupId=${groupId}`;
+        }
+    });
+
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const createGroupForm = document.getElementById("createGroupForm");
+        if(createGroupForm){
+            createGroupForm.addEventListener("submit", async e => {
+                e.preventDefault();
+
+                    const groupName = document.getElementById("newGroupName").value.trim();
+    if (!groupName) return;
+
+    try {
+        let res = await fetch('/Group/CreateGroup', {
+            method: 'POST',
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `groupName=${encodeURIComponent(groupName)}`
+        });
+
+        let result = await res.json(); // now should properly return JSON
+        if(result.success){
+            bootstrap.Modal.getInstance(document.getElementById("createGroupModal")).hide();
+            document.getElementById("newGroupName").value = "";
+            loadGroups();
+        } else {
+            alert(result.message || "Failed to create group.");
+        }
+    } catch(err) {
+        console.error(err);
+        alert("Error creating group.");
+    }
+
+            });
+        }
+    });
+</script>
+
+<div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="profileModalTitle">Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="profilePhoto" src="" class="rounded-circle mb-3" style="width:100px; height:100px;" />
+                <h6 id="profileUsername"></h6>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="currentUserProfileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="currentUserProfileForm" enctype="multipart/form-data" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Your Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="currentUserPhoto" src="/images/default-avatar.png" class="rounded-circle mb-3" style="width:100px; height:100px;" />
+                <div class="mb-3">
+                    <label for="currentUserPhotoInput" class="form-label">Profile Photo</label>
+                    <input type="file" class="form-control" id="currentUserPhotoInput" accept="image/*" />
+                </div>
+
+                <div class="mb-3">
+                    <input type="text" id="currentUsername" class="form-control" placeholder="Username" />
+                </div>
+                <div class="mb-3">
+                    <input type="email" id="currentUserEmail" class="form-control" placeholder="Email" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="modal fade" id="createGroupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="createGroupForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="newGroupName" class="form-control" placeholder="Group Name" required />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+        </form>
+    </div>
+</div>

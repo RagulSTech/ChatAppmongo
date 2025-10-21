@@ -1,0 +1,412 @@
+﻿@model ChatAppMongo.Models.ChatGroup
+@using Microsoft.AspNetCore.Http
+@{
+    var currentUser = Context.Session.GetString("UserId");
+    Layout = null;
+}
+<!-- External CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet" />
+
+<style>
+    body {
+        background-color: #f1f1f1;
+        font-family: 'Poppins', sans-serif;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+    }
+
+    .chat-container {
+        display: flex;
+        flex-direction: row;
+        background-color: #fff;
+        width: 100%;
+        max-width: 1200px;
+        height: 90vh;
+        margin: 2vh auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .sidebar, .memberbar {
+        width: 240px;
+        background: #f7f9fb;
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        box-sizing: border-box;
+    }
+
+    .sidebar {
+        border-right: 1px solid #e4e7ec;
+    }
+
+    .memberbar {
+        border-left: 1px solid #e4e7ec;
+    }
+
+        .sidebar h6,
+        .memberbar h6 {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 1rem;
+        }
+
+    .input-group {
+        margin-bottom: 1rem;
+    }
+
+    .search-results,
+    .group-members {
+        overflow-y: auto;
+        flex-grow: 1;
+        padding-right: 5px;
+    }
+
+    .list-group-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: none;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+        background: transparent;
+    }
+
+        .list-group-item img {
+            width: 35px;
+            height: 35px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .list-group-item span {
+            flex-grow: 1;
+            font-size: 15px;
+            font-weight: 500;
+            color: #222;
+        }
+
+        .list-group-item:hover {
+            background-color: #eaeff5;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+    .addUserBtn {
+        white-space: nowrap;
+    }
+
+    .center-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .chat-header {
+        background-color: #007bff;
+        color: white;
+        padding: 15px;
+        font-size: 18px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .chat-messages {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background-color: #eef3f8;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        scroll-behavior: smooth;
+    }
+
+    .message {
+        max-width: 75%;
+        padding: 10px 14px;
+        border-radius: 16px;
+        word-wrap: break-word;
+        font-size: 14px;
+        line-height: 1.4;
+        position: relative;
+    }
+
+    .sent {
+        background-color: #007bff;
+        color: white;
+        align-self: flex-end;
+        border-top-right-radius: 4px;
+    }
+
+    .received {
+        background-color: #ffffff;
+        align-self: flex-start;
+        border: 1px solid #ddd;
+        border-top-left-radius: 4px;
+    }
+
+    .message small {
+        display: block;
+        text-align: right;
+        font-size: 10px;
+        color: rgba(255,255,255,0.7);
+        margin-top: 4px;
+    }
+
+    .received small {
+        color: gray;
+    }
+
+    .chat-input {
+        display: flex;
+        padding: 10px;
+        background-color: #fff;
+        border-top: 1px solid #ddd;
+        position: sticky;
+        bottom: 0;
+    }
+
+    #messageInput {
+        flex: 1;
+        border: 1px solid #ccc;
+        border-radius: 20px;
+        padding: 10px 15px;
+        outline: none;
+        font-size: 14px;
+    }
+
+    #sendBtn {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        margin-left: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+    }
+
+        #sendBtn:hover {
+            background-color: #0056b3;
+        }
+</style>
+
+<div class="chat-container">
+    <!-- LEFT: Search/Add Friends -->
+    <div class="sidebar">
+        <h6>Find Friends</h6>
+        <div class="input-group">
+            <input type="text" id="searchUserInput" class="form-control" placeholder="Search users..." />
+            <button class="btn btn-primary" id="searchUserBtn">Search</button>
+        </div>
+        <ul class="list-group search-results" id="searchResults"></ul>
+    </div>
+
+    <!-- CENTER: Chat Room -->
+    <div class="center-panel">
+        <div class="chat-header">
+            <div>@Model.Name</div>
+            <a href="/Chat/Friends" class="text-white fs-4 text-decoration-none">&times;</a>
+        </div>
+        <div id="chatBox" class="chat-messages flex-grow-1"></div>
+        <div class="chat-input">
+            <input id="messageInput" type="text" placeholder="Type a message..." />
+            <button id="sendBtn"><i class="fa fa-paper-plane"></i></button>
+        </div>
+    </div>
+    @{
+        var members = ViewBag.Members as IEnumerable<dynamic>;
+        var currentUserId = ViewBag.CurrentUserId;
+        var currentUserMember = members.FirstOrDefault(m => m.Id == currentUserId);
+        var otherMembers = members.Where(m => m.Id != currentUserId);
+    }
+    <!-- RIGHT: Member List -->
+    <div class="memberbar">
+        <h6>Members</h6>
+        <ul class="list-group group-members" id="groupMembers">
+            @if (currentUserMember != null)
+            {
+                <li class="list-group-item d-flex align-items-center member-profile-trigger"
+                    data-id="@currentUserMember.Id"
+                    data-username="@currentUserMember.Username"
+                    data-email="@currentUserMember.Email"
+                    data-photo="@(currentUserMember.PhotoUrl ?? "/images/default-avatar.png")"
+                    style="cursor:pointer;">
+                    <img src="@(currentUserMember.PhotoUrl ?? "/images/default-avatar.png")"
+                         alt="Profile" class="rounded-circle me-2" style="width:40px; height:40px;" />
+                    <span>@currentUserMember.Username <strong style="font-weight: 700;">(You)</strong></span>
+                </li>
+            }
+            @foreach (var member in otherMembers)
+            {
+                <li class="list-group-item d-flex align-items-center member-profile-trigger"
+                    data-id="@member.Id"
+                    data-username="@member.Username"
+                    data-email="@member.Email"
+                    data-photo="@(member.PhotoUrl ?? "/images/default-avatar.png")"
+                    style="cursor:pointer;">
+                    <img src="@(member.PhotoUrl ?? "/images/default-avatar.png")"
+                         alt="Profile" class="rounded-circle me-2" style="width:40px; height:40px;" />
+                    <span>@member.Username</span>
+                </li>
+            }
+
+        </ul>
+
+    </div>
+</div>
+
+<div class="modal fade" id="memberProfileModal" tabindex="-1" aria-labelledby="memberProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="memberProfileModalLabel">Member Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex flex-column align-items-center">
+                <img id="profileImage" src="" alt="Profile Picture" class="rounded-circle mb-3" style="width:150px; height:150px; object-fit:cover;" />
+                <h5 id="profileUsername" class="mb-1"></h5>
+                <h6 id="profileemailid" class="mb-1"></h6>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@7.0.5/dist/browser/signalr.min.js"></script>
+
+<script>
+        document.querySelectorAll('.member-profile-trigger').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const username = el.getAttribute('data-username');
+            const photoUrl = el.getAttribute('data-photo');
+                const emailid = el.getAttribute('data-email');
+                document.getElementById('profileemailid').textContent = emailid;
+
+            document.getElementById('profileUsername').textContent = username;
+            document.getElementById('profileImage').src = photoUrl;
+
+            const modal = new bootstrap.Modal(document.getElementById('memberProfileModal'));
+            modal.show();
+        });
+    });
+
+
+    const groupId = '@Model.Id';
+    const currentUser = '@currentUser';
+    const chatBox = document.getElementById("chatBox");
+    const input = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const searchInput = document.getElementById("searchUserInput");
+    const searchBtn = document.getElementById("searchUserBtn");
+    const searchResults = document.getElementById("searchResults");
+    const groupMembersList = document.getElementById("groupMembers");
+
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/chathub")
+        .build();
+
+    connection.on("ReceiveGroupMessage", (senderId, recvGroupId, message, messageId, timestamp) => {
+        if (recvGroupId !== groupId) return;
+        const div = document.createElement("div");
+        const isSent = senderId === currentUser;
+        div.className = `message ${isSent ? "sent" : "received"}`;
+        div.setAttribute("data-id", messageId);
+        div.innerHTML = `${message}<small>${new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    connection.start().catch(err => console.error(err.toString()));
+
+    sendBtn.addEventListener("click", async () => {
+        const text = input.value.trim();
+        if (!text) return;
+        await connection.invoke("SendGroupMessage", currentUser, groupId, text, null, null, null);
+        input.value = "";
+    });
+
+    input.addEventListener("keypress", e => {
+        if (e.key === "Enter") sendBtn.click();
+    });
+
+    // User search & add
+    searchBtn.addEventListener("click", async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        const res = await fetch(`/Group/SearchUsers?groupId=${groupId}&query=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        searchResults.innerHTML = "";
+        if (data.success && data.users.length > 0) {
+            data.users.forEach(u => {
+                const li = document.createElement("li");
+                li.className = "list-group-item";
+                li.innerHTML = `<span>${u.username}</span>
+                                <button class="btn btn-sm btn-success addUserBtn" data-id="${u.id}" data-username="${u.username}">Add</button>`;
+                searchResults.appendChild(li);
+            });
+        } else {
+            searchResults.innerHTML = `<li class="list-group-item text-muted">No users found</li>`;
+        }
+    });
+
+    searchResults.addEventListener("click", async (e) => {
+        if (e.target.classList.contains("addUserBtn")) {
+            const userId = e.target.dataset.id;
+            const username = e.target.dataset.username;
+            const res = await fetch('/Group/AddMember', {
+                method: 'POST',
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `groupId=${groupId}&userId=${userId}`
+            });
+            const data = await res.json();
+            if (data.success) {
+                e.target.disabled = true;
+                e.target.innerText = "Added";
+                const li = document.createElement("li");
+                li.className = "list-group-item";
+                li.innerHTML = `<img src="/images/default-avatar.png" /><span>${username}</span>`;
+                groupMembersList.appendChild(li);
+            } else {
+                alert(data.message);
+            }
+        }
+    });
+
+    async function loadGroupMessages() {
+        const res = await fetch(`/Group/GetGroupMessages?groupId=${groupId}`);
+        const data = await res.json();
+        chatBox.innerHTML = "";
+        data.forEach(m => {
+            const div = document.createElement("div");
+            const isSent = m.senderId === currentUser;
+            const time = new Date(m.timestamp);
+            div.className = `message ${isSent ? "sent" : "received"}`;
+            div.innerHTML = m.fileUrl
+                ? `<a href="${m.fileUrl}" target="_blank">${m.fileName}</a><small>${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>`
+                : `${m.message}<small>${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>`;
+            chatBox.appendChild(div);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    loadGroupMessages();
+</script>
