@@ -18,6 +18,7 @@ namespace ChatAppMongo.Models
         public bool IsRead { get; set; } = false;
         public List<string> VisibleTo { get; set; } = new List<string>();
 
+
         public string? FileUrl { get; set; }       // URL/path of uploaded file
         public string? FileType { get; set; }      // photo, video, document
         public string? FileName { get; set; }      // original file name

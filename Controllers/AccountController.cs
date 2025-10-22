@@ -51,18 +51,47 @@ namespace ChatAppMongo.Controllers
                 return View();
             }
 
-            // Login success
+            // Mark user online
+            var update = Builders<UserModel>.Update.Set(u => u.IsOnline, true);
+            await _users.UpdateOneAsync(u => u.Id == user.Id, update);
+
+            // Set session
             HttpContext.Session.SetString("UserId", user.Id);
             HttpContext.Session.SetString("Username", user.Username);
 
             return RedirectToAction("Friends", "Chat");
         }
-        [HttpPost]
-        public IActionResult Logout()
-        {
-            HttpContext.Session.Clear();
 
-            return RedirectToAction("Login", "Account");
+        [HttpPost]
+        public async Task<IActionResult> Logout()
+        {
+            var userId = HttpContext.Session.GetString("UserId");
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var update = Builders<UserModel>.Update.Set(u => u.IsOnline, false);
+                await _users.UpdateOneAsync(u => u.Id == userId, update);
+
+                HttpContext.Session.Clear();
+            }
+
+            return RedirectToAction("Login");
         }
+        [HttpGet]
+        public async Task<IActionResult> GetOnlineStatuses()
+        {
+            var userId = HttpContext.Session.GetString("UserId");
+
+            if (string.IsNullOrEmpty(userId))
+                return Json(new { success = false });
+
+            // Get all friends of current user
+            var friends = await _users.Find(u => u.Friends.Contains(userId)).ToListAsync();
+
+            // Return only Id and IsOnline
+            var statuses = friends.Select(f => new { f.Id, f.IsOnline }).ToList();
+
+            return Json(statuses);
+        }
+
     }
 }

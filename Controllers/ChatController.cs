@@ -137,5 +137,25 @@ namespace ChatAppMongo.Controllers
 
             return Json(result);
         }
+        [HttpGet]
+        public async Task<IActionResult> GetUnreadCounts(string currentUserId)
+        {
+            var counts = await _chatCollection.Aggregate()
+                .Match(m => m.ReceiverId == currentUserId && !m.IsRead)
+                .Group(m => m.SenderId, g => new { SenderId = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            return Json(counts);
+        }
+        [HttpPost]
+        public async Task<IActionResult> MarkAsRead(string currentUserId, string friendId)
+        {
+            var filter = Builders<ChatMessage>.Filter.Where(m => m.ReceiverId == currentUserId && m.SenderId == friendId && !m.IsRead);
+            var update = Builders<ChatMessage>.Update.Set(m => m.IsRead, true);
+
+            await _chatCollection.UpdateManyAsync(filter, update);
+            return Json(new { success = true });
+        }
+
     }
 }
